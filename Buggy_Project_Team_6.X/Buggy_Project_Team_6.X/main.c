@@ -55,8 +55,8 @@ int main(void)
     const uint8_t lostWireLimit = 5U;
     const uint8_t speedReduceShift = 1U; /* divide |error| by 2 for speed reduction */
 
-    uint16_t left_adc;
-    uint16_t right_adc;
+    adc_result_t left_adc;
+    adc_result_t right_adc;
     int16_t left_filt;
     int16_t right_filt;
     int16_t error;
@@ -67,18 +67,34 @@ int main(void)
     /* Prime filter state from first sample so startup is smooth. */
     left_adc = ADC_ChannelSelectAndConvert(ADC_CHANNEL_ANA0);
     right_adc = ADC_ChannelSelectAndConvert(ADC_CHANNEL_ANC2);
-    left_filt = (int16_t)left_adc;
-    right_filt = (int16_t)right_adc;
+    if (left_adc < 0)
+    {
+        left_adc = 0;
+    }
+    if (right_adc < 0)
+    {
+        right_adc = 0;
+    }
+    left_filt = left_adc;
+    right_filt = right_adc;
 
     while (1)
     {
         /* 1) Read both sensors each loop. */
         left_adc = ADC_ChannelSelectAndConvert(ADC_CHANNEL_ANA0);
         right_adc = ADC_ChannelSelectAndConvert(ADC_CHANNEL_ANC2);
+        if (left_adc < 0)
+        {
+            left_adc = 0;
+        }
+        if (right_adc < 0)
+        {
+            right_adc = 0;
+        }
 
         /* 2) Tiny IIR filter: filtered += (new - filtered) >> 3 */
-        left_filt += ((int16_t)left_adc - left_filt) >> 3;
-        right_filt += ((int16_t)right_adc - right_filt) >> 3;
+        left_filt += (left_adc - left_filt) >> 3;
+        right_filt += (right_adc - right_filt) >> 3;
 
         /* 3) Signed tracking error. */
         error = right_filt - left_filt;
